@@ -1,0 +1,10 @@
+scope:
+  - n0
+  - n1
+
+steps:
+  - name: first
+    duration: ...
+    depends: ...
+    action:
+      
