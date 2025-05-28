@@ -1,3 +1,35 @@
-__pycache__
-Logs
+# Byte-compiled files
+__pycache__/
+*.pyc
+*.pyo
+
+# Virtual environments
+.venv/
+venv/
+
+# Environment variables
+.env
+
+# Test and coverage
+.pytest_cache/
+.coverage
+
+# IDE/editor settings
+.vscode/
+.idea/
+
+# OS files
 .DS_Store
+Thumbs.db
+
+# Log files
+Logs/*
+!Logs/.gitkeep
+
+# Graph files
+Graphs/*
+!Graphs/.gitkeep
+
+# Experiment files
+Experiments/*
+!Experiments/.gitkeep

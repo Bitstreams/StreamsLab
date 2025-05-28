@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from enum import IntEnum
+from logging.handlers import RotatingFileHandler
 import resource
 from asyncio import Task
 import asyncio
@@ -9,7 +10,6 @@ from typing import Any, Generator, Self
 import logging
 import random
 
-from .mrfh import ManagedRotatingFileHandler
 from .miner import Miner
 from .node import Node
 from .channel import Channel
@@ -30,7 +30,7 @@ class Lab:
 
         self.__status: Lab.Status = Lab.Status.STOPPED
 
-        log_handler: ManagedRotatingFileHandler = ManagedRotatingFileHandler(
+        log_handler: RotatingFileHandler = RotatingFileHandler(
             f"Logs/{self.name}.log",
             backupCount = 100,
             encoding = "utf-8"
