@@ -6,6 +6,9 @@ from curses.panel import panel as CursesPanel, new_panel
 import logging
 from typing import Any, Type, overload
 from pyfiglet import Figlet, FigletString
+import signal
+
+signal.signal(signal.SIGINT, signal.SIG_IGN)
 
 class UI:
     

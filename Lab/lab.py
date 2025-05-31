@@ -160,9 +160,7 @@ class Lab:
             self.__status = Lab.Status.READY
     
     async def create_miners(self) -> None:
-
         self.__status = Lab.Status.CREATE_MINERS
-
         try:
             async with ManagedTaskGroup() as group:
                 for i in range(self.total_miner_count):
@@ -174,6 +172,7 @@ class Lab:
         except ExceptionGroup as eg:
             for e in eg.exceptions:
                 logging.error("CREATE_MINER", eg.message, e)
+            raise
         
         self.__status = Lab.Status.CONNECT_MINERS
 
@@ -189,6 +188,7 @@ class Lab:
         except ExceptionGroup as eg:
             for e in eg.exceptions:
                 logging.error("CONNECT_MINER", eg.message, e)
+            raise
 
     async def create_nodes(self) -> None:
         self.__status = Lab.Status.CREATE_NODES_FUND_CHANNELS
@@ -217,6 +217,7 @@ class Lab:
         except ExceptionGroup as eg:
             for e in eg.exceptions:
                 logging.error("CREATE_NODE_FUND_CHANNEL", eg.message, e)
+            raise
 
         await self.sync_mine(100)
     
@@ -268,6 +269,7 @@ class Lab:
             logging.error(f"CREATE_CHANNEL {eg.message}")
             for e in eg.exceptions:
                 logging.error(f"CREATE_CHANNEL {e}")
+            raise
 
     async def stop(self) -> None:
         if self.__status == Lab.Status.READY:
@@ -288,6 +290,7 @@ class Lab:
         except ExceptionGroup as eg:
             for e in eg.exceptions:
                 logging.error("STOP_NODES", eg.message, e)
+            raise
 
     async def stop_miners(self) -> None:
         try:
@@ -301,5 +304,6 @@ class Lab:
         except ExceptionGroup as eg:
             for e in eg.exceptions:
                 logging.error("STOP_MINERS", eg.message, e)
+            raise
 
     

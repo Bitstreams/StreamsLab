@@ -20,28 +20,36 @@ async def main():
 
             match main.options.index(main_selected):
                 case 0:
-                    while not graph:
-                        erdos_renyi = get_erdos_renyi_menu(ui).display()
+                    erdos_renyi = get_erdos_renyi_menu(ui).display()
 
-                        if not erdos_renyi:
-                            continue
+                    if not erdos_renyi:
+                        continue
 
-                        topology = nx.gnm_random_graph(
-                            n = erdos_renyi["NUMBER_OF_NODES"].value,
-                            m = erdos_renyi["NUMBER_OF_EDGES"].value,
-                            directed = True
-                        )
+                    topology = nx.gnm_random_graph(
+                        n = erdos_renyi["NUMBER_OF_NODES"].value,
+                        m = erdos_renyi["NUMBER_OF_EDGES"].value,
+                        directed = True
+                    )
 
-                        graph = PayGraph(
-                            erdos_renyi["EXPERIMENT_NAME"].value,
-                            topology,
-                            mean_capacity = erdos_renyi["MEAN_CHANNEL_CAPACITY"].value,
-                            capacity_deviation = erdos_renyi["CHANNEL_CAPACITY_DEVIATION"].value,
-                            mean_ppm_fee = erdos_renyi["MEAN_PROPORTIONAL_FEE"].value * 10_000,
-                            ppm_fee_deviation = erdos_renyi["PROPORTIONAL_FEE_DEVIATION"].value * 10_000
-                        )
+                    graph = PayGraph(
+                        erdos_renyi["EXPERIMENT_NAME"].value,
+                        topology,
+                        mean_capacity = erdos_renyi["MEAN_CHANNEL_CAPACITY"].value,
+                        capacity_deviation = erdos_renyi["CHANNEL_CAPACITY_DEVIATION"].value,
+                        mean_ppm_fee = erdos_renyi["MEAN_PROPORTIONAL_FEE"].value * 10_000,
+                        ppm_fee_deviation = erdos_renyi["PROPORTIONAL_FEE_DEVIATION"].value * 10_000
+                    )
 
                 case 1:
+
+                    graph_files: list[str] = [f for f in os.listdir("Graphs") if f.endswith(".graphml.xml")]
+
+                    if not graph_files:
+                        OkWindow(ui, "No Files Found", [
+                            "No graph files were found under the Graphs folder"
+                        ]).display()
+                        continue
+
                     load = Menu(
                         ui,
                         "Load Existing Laboratory Graph",
@@ -49,7 +57,7 @@ async def main():
                             "Please choose one of the existing laboratory graph files"
                         ],
                         [
-                            *os.listdir("Graphs"),
+                            *graph_files,
                             "Back to Source Graph menu"
                         ],
                         True
@@ -57,21 +65,22 @@ async def main():
 
                     load_selected = load.options[0]
 
-                    while not graph:
-                         load_selected = load.display(load_selected)
-                         if load_selected  ==  load.options[-1]:
-                            break
-                         else:
-                            if YesNoWindow(
-                                ui,
-                                "Confirm File Load",
-                                [
-                                    f"You're about to load graph from {load_selected}",
-                                    "",
-                                    "Are you sure?"
-                                ]
-                            ).display():
-                                graph = PayGraph.load(f"Graphs/{load_selected}")
+                    load_selected = load.display(load_selected)
+                    if load_selected  ==  load.options[-1]:
+                        continue
+                    else:
+                        if YesNoWindow(
+                            ui,
+                            "Confirm File Load",
+                            [
+                                f"You're about to load graph from {load_selected}",
+                                "",
+                                "Are you sure?"
+                            ]
+                        ).display():
+                            graph = PayGraph.load(f"Graphs/{load_selected}")
+                        else:
+                            continue
                 
                 case 2:
                     return

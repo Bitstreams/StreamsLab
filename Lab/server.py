@@ -1,3 +1,4 @@
+from __future__ import annotations
 from abc import abstractmethod
 import asyncio
 import io
@@ -6,6 +7,8 @@ import tarfile
 from typing import Any, Self, Generator
 import docker
 from docker.models.containers import Container
+import json
+import httpx
 
 class Server():
     __docker_client: docker.DockerClient = docker.from_env(timeout = 600, max_pool_size = 10_000)
@@ -20,37 +23,40 @@ class Server():
         image: str,
         command: str | list[str],
         environment: dict[str, str] | None = None,
-        rpc_port: int | None
+        control_port: int | None
     ) -> None:
-        self.__container: Container | None = None
-        self.__image: str = image
-        self.__command: str | list[str] = command
-        self.__environment: dict[str, str] | None = environment
-        self.__internal_rpc_port: int | None = rpc_port
+        self.__container: Container = self.__docker_client.containers.create(
+            image = image,
+            command = command,
+            detach = True,
+            network = "streamslab",
+            environment = environment,
+            ports = {f"{control_port}/tcp": None} if control_port else None,
+            mem_limit = "256m",
+            memswap_limit = "256m",
+            auto_remove = True
+        )
+        self.__control_port: int | None = control_port
+        self._rest_client: httpx.AsyncClient
 
     def __await__(self) -> Generator[Any, None, Self]:
         return self.start().__await__()
 
     async def start(self) -> Self:
-        if not self.__container:
-            self.__container = await asyncio.to_thread(
-                self.__docker_client.containers.run,
-                image = self.__image,
-                command = self.__command,
-                detach = True,
-                network = "streamslab",
-                environment = self.__environment,
-                ports = {f"{self.__internal_rpc_port}/tcp": None} if self.__internal_rpc_port else None,
-                mem_limit = "256m",
-                memswap_limit = "256m",
-                remove = True
+        if not self.is_running:
+            await asyncio.to_thread(self.container.start)
+            self._rest_client = httpx.AsyncClient(
+                base_url = await self.__control_url,
+                timeout = 60
             )
-            self.__host_rpc_port: int = 0
         return self
+    
+    def __str__(self) -> str:
+        return self.name
 
     @property
     def is_running(self) -> bool:
-        return bool(self.__container)
+        return self.__container.status == "running"
     
     @property
     def name(self) -> str:
@@ -67,19 +73,27 @@ class Server():
             return self.__container
     
     @property
-    def host_rpc_port(self) -> int:
-        if not self.__host_rpc_port:
+    async def __control_url(self) -> str:
+        if not self.__control_port:
+            raise ValueError("No control port is exposed to host")
+        
+        self.container.reload()
+        while not self.container.attrs["NetworkSettings"]["Ports"][f"{self.__control_port}/tcp"]:
             self.container.reload()
-            if not self.__internal_rpc_port:
-                raise ValueError("No ports are exposed to host")
-            self.__host_rpc_port = int(self.container.attrs["NetworkSettings"]["Ports"][f"{self.__internal_rpc_port}/tcp"][0]["HostPort"])
-        return self.__host_rpc_port
+            logging.warning(f"Port was not loaded on {self}. We have {json.dumps(self.container.attrs["NetworkSettings"]["Ports"])}")
+            await asyncio.sleep(1)
+
+        host_port = int(self.container.attrs["NetworkSettings"]["Ports"][f"{self.__control_port}/tcp"][0]["HostPort"])
+
+        logging.debug(f"{self} exposes {host_port}")
+            
+        return f"http://127.0.0.1:{host_port}"
 
     async def execute(self, *command: str, **kwargs) -> Any:
         ...
 
     @abstractmethod
-    async def connect(self, destination: Self) -> None:
+    async def connect(self, destination: Server) -> None:
         ...
 
     @abstractmethod
@@ -113,4 +127,6 @@ class Server():
         await asyncio.to_thread(self.__block_until, text)
     
     async def stop(self) -> None:
-        await asyncio.to_thread(self.container.stop)
+        if self.is_running:
+            await asyncio.to_thread(self.__container.stop)
+            await self._rest_client.aclose()
