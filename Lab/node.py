@@ -60,7 +60,7 @@ class Node(Server):
             self.public_key = (await self.get_info())["id"]
 
 
-            #asyncio.create_task(self.__log_stats())
+            asyncio.create_task(self.__log_stats())
 
         return self
     
